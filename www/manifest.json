@@ -1,6 +1,6 @@
 {
-  "name": "My Ionic App",
-  "short_name": "My Ionic App",
+  "name": "B-Chat",
+  "short_name": "B-Chat",
   "start_url": "index.html",
   "display": "standalone",
   "icons": [{
