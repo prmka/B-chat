@@ -1,2 +1,2 @@
-# ble-chat
-Bluetooth Low Energy Chat
+# B-chat
+Bluetooth Chat
