@@ -1,26 +1,21 @@
 angular.module('starter.controllers', [])
 
-.controller('SettingsCtrl', function($scope) {
+.controller('SettingsCtrl', function($scope, Bluetooth) {
 	$scope.settings = {
-		visible: true
+		visible: Bluetooth.isVisible(),
+		searching: Bluetooth.isSearching(),
 	};
 })
 
 .controller('PeopleCtrl', function($scope, Chats) {
-	// With the new view caching in Ionic, Controllers are only called
-	// when they are recreated or on app start, instead of every page change.
-	// To listen for when this page is active (for example, to refresh data),
-	// listen for the $ionicView.enter event:
-	//
-	//$scope.$on('$ionicView.enter', function(e) {
-	//});
-
 	$scope.chats = Chats.all();
 	$scope.remove = function(chat) {
 		Chats.remove(chat);
 	};
 })
 
-.controller('ChatCtrl', function($scope, $stateParams, Chats) {
+.controller('ChatCtrl', function($scope, $stateParams, $interval, Chats) {
 	$scope.other = Chats.get($stateParams.chatId);
+	var c = 0;
+	$interval(() => $scope.count = c++, 500)
 });
