@@ -1,19 +1,17 @@
-angular.module('starter.bluetooth', [])
+angular.module('starter.bluetooth', ['ionic'])
 
-.factory('Bluetooth', function(Serializer, Chats) {
-    // Trzeba jeszcze jakis plugin znalesc bo https://www.npmjs.com/package/cordova-plugin-bluetooth-serial nie moze laczyc sie telefon-telefon
-    // Co ma robic:
-    // - odpala bt na starcie
-    // - subskrybuje do RawData i zapisuje to do bufferu.
-    // - przekazuje buffer do serializera tak dlugo az on przestanie zwracac pakiety. patrz Serializer.fromBytes()
-    // - przekazuje pakiety do Chats.onMessage()
-    // - co jakies 30s robi discoverUnpaired zapisujac co znajdzie i zapominajac od poprzednim szukaniu
-    // - i uzupelnij funkcje
+.factory('Bluetooth', function(Serializer, $ionicPlatform) {
 
 	return {
         // wyszukuje na nowo niezparowane urzadzenia
 		refreshList: function() {
-            
+			$ionicPlatform.ready(function() {
+				networking.bluetooth.getAdapterState(function (adapterInfo) {
+				    alert('Adapter ' + adapterInfo.address + ': ' + adapterInfo.name);
+				}, function (errorMessage) {
+				    alert(errorMessage);
+				});
+			})
 		},
         // Wszystkie zparowane i niezparowane urzadzenia jako array:
         // {

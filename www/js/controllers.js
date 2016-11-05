@@ -5,6 +5,7 @@ angular.module('starter.controllers', [])
 		visible: Bluetooth.isVisible(),
 		searching: Bluetooth.isSearching(),
 	};
+	Bluetooth.refreshList()
 })
 
 .controller('PeopleCtrl', function($scope, Chats) {
