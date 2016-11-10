@@ -4,7 +4,7 @@ angular.module('starter.serializer', [])
 
 	return {
 		fromBytes: function(buffer) {
-            JSON.stringify(buffer.toString('utf8'))
+            JSON.parse(buffer.toString('utf8'))
 		},
 		toBytes: function(packet) {
             JSON.stringify(packet)
