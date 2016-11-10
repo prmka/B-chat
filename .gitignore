@@ -11,4 +11,4 @@ plugins/
 *.jsproj.user
 
 *.sln
-
+taco.json
