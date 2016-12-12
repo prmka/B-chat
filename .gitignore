@@ -4,3 +4,11 @@
 node_modules/
 platforms/
 plugins/
+
+# VS
+.vs/
+*.jsproj
+*.jsproj.user
+
+*.sln
+taco.json
