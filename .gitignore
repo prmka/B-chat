@@ -12,3 +12,4 @@ plugins/
 
 *.sln
 taco.json
+www/lib/
