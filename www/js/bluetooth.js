@@ -1,179 +1,111 @@
 angular.module('starter.bluetooth', ['ionic'])
 
-
-.factory('Bluetooth', function(Serializer, $ionicPlatform) {
+.factory('Bluetooth', function(Serializer, $ionicPlatform, $timeout, $rootScope, $state) {
+	
+	var uuid = '6a822aec-c0b2-11e6-a4a6-cec0c932ce01';
+	var address
+	var discovering = false
+	var discoverable = false
+	var devicesList = {}
+	var serverSocket;
+	var clientSocket;
+	var onMessage = () => {};
+	
+	function addDevice(device) {
+		devicesList[device.address] = device
+		$rootScope.$broadcast("newDevice");
+	}
+	
+	$ionicPlatform.ready(function() {
+		networking.bluetooth.onAdapterStateChanged.addListener(function (adapterInfo) {
+			address = adapterInfo.address
+			name = adapterInfo.name
+			discovering = adapterInfo.discovering
+			discoverable = adapterInfo.discoverable
+		});
+		
+		networking.bluetooth.onReceiveError.addListener(function (errorInfo) {
+		    if (errorInfo.socketId !== socketId) {
+		        return;
+		    }
+		    alert(errorInfo.errorMessage);
+		});
+		
+		networking.bluetooth.listenUsingRfcomm(uuid, function (serverSocketId) {
+			serverSocket = serverSocketId
+		}, alert);
+		
+		networking.bluetooth.onAccept.addListener(function (acceptInfo) {
+			clientSocket = acceptInfo.clientSocketId;
+			$state.go("tab.chat", {"chatId": 123})
+		});
+		
+		networking.bluetooth.onReceive.addListener(function (receiveInfo) {
+			var data = Serializer.fromBytes(receiveInfo.data)
+			onMessage(data)
+		});
+	})
 
 	return {
-
-		/// struct DevInfo
-		/// 
-		/// Struktura opisuje dostepne informacje o urzadzeniu
-		/// FIELDS
-		///   id                      ID urzadzenia
-		///   name                    Wyswietlana nazwa urzadzenia
-		///   paired                  Informacja o aktualnym stanie sparowania urzadzenia
-		DevInfo: function () {
-			return {
-				dev_id: -1,
-				dev_name: "uninitialized",
-				dev_paired: false
-			};
+        // wyszukuje na nowo niezparowane urzadzenia
+		refreshList: function() {
+			devicesList = {}
+			$rootScope.$broadcast("newDevice");
+			$ionicPlatform.ready(function() {
+				networking.bluetooth.onDeviceAdded.addListener(addDevice);
+				networking.bluetooth.startDiscovery()
+				networking.bluetooth.getDevices(function (devices) {
+				    for (device of devices) {
+						addDevice(device)
+				    }
+				}, alert);
+			})
 		},
-		
-		/// DevInfo bt_devinfo
-		/// zawiera informacje o lokalnym urzadzeniu  
-		bt_localdevifno: {},
-
-		/// {id, DevInfo} bt_devmap
-		/// Mapa znalezionych urzadzen
-		bt_devmap: {/* (id, devinfo) */},
-
-		/// bool bt_listautoupdate
-		/// Flaga ustawiajaca autoupdate szukanych urzadzen
-		bt_listautoupdate: false,
-
-		/// bool bt_issearching
-		/// Flaga mowiaca czy aktualnie sa szukane urzadzenia
-		bt_issearching: false,
-
-		/// bool isconnected
-		/// Flaga mowiaca o tym czy jestesmy polaczeni z czatem
-		bt_isconnected: false,
-
-		/// bool isvisible
-		/// Flaga mowiaca o widocznosci urzadzenia
-		bt_isvisible: false,
-		
-
-		/// void init()
-		/// Inicjalizuje modul bt
-		init: function() {
-			this.bt_localdevifno = this.DevInfo();
-			this.bt_localdevinfo.dev_id = 0;
-			this.bt_localdevifno.dev_name = "noname";
+        // Wszystkie zparowane i niezparowane urzadzenia jako array:
+		// address: String --> The address of the device, in the format 'XX:XX:XX:XX:XX:XX'.
+        // name: String --> The human-readable name of the device.
+        // paired: Boolean --> Indicates whether or not the device is paired with the system.
+        // uuids: Array of String --> UUIDs of protocols, profiles and services advertised by the device.
+        list: function() {
+            return devicesList;
 		},
-
-
-		/// void refreshList()
-		///
-		/// Aktualizuje liste dostepnych urzadzen
-		refreshList: function () {
-
-			// HACK
-		/*	$ionicPlatform.ready(function() {
-				networking.bluetooth.getAdapterState(function (adapterInfo) {
-				    alert('Adapter ' + adapterInfo.address + ': ' + adapterInfo.name);
-				}, function (errorMessage) {
-				    alert(errorMessage);
-				});
-			})*/
-		},
-        
-
-		/// [{int, string, bool}] list()
-		///
-		/// Zwraca liste wszystkich aktualnie dostepnych urzadzen,
-		/// zarowno tych polaczonych jak i tylko dostepnych
-		///
-		/// RETURNS
-		///   [{id, name, paired}]    Kolekcja list o polach: id, nazwa urzadzenia, czy sparowane
-		///
-		list: function() {
-			var devs = [];
-
-			// HACK fix later
-			for(obj in this.bt_devmap) {
-				devs += { 
-					'id': this.bt_devmap[obj].dev_id, 
-					'name': this.bt_devmap[obj].dev_name, 
-					'paired': this.bt_devmap[obj].dev_paired
-				};
-			}
-
-			return devs;
-		},
-
-
-		/// void setName(string)
-		/// 
-		/// Zmienia wyswietlana nazwe urzadzenia
-		///
-		/// PARAMS
-		///   name                     Nowa wyswietlana nazwa urzadzenia
-        setName: function(name) {
-        	this.bt_localdevifno.name = name;
-			// TODO shd
+        connect: function(addr) {
+			networking.bluetooth.connect(addr, uuid, function (socketId) {
+				clientSocket = socketId;
+			}, alert);
         },
-
-
-		/// bool isConnected()
-		///
-		/// Sprawdza czy urzadzenie jest polaczone z chatem
-		///
-		/// RETURNS
-		///   true                      Udalo sie nawiazac polaczenie
-		///   false                     Urzdzenie nie jest polaczone
-        isConnected: function() {
-        	return this.bt_isconnected;
-        },
-
-
-		/// void connect(int)
-		///
-		/// polacz z urzadzeniem o podanym id
-		///
-		/// PARAMS
-		///   id                         ID urzadzenia, z ktrrym chcemy sie polaczyc
-        connect: function(id) {
-            // TODO shd
-        },
-
-
-		/// bool isVisible()
-		///
-		/// Sprawdza czy urzadzenie jest widoczne dla niesparowanych urzadzen
-		///
-		/// RETURNS
-		///   true                       Urzadzenie jest widoczne
-		///   false                      Urzadzenie nie jest widoczne
+		send: function(packet) {
+			var data = Serializer.toBytes(packet)
+			networking.bluetooth.send(clientSocket, data);
+		},
+		onMessage: function(hook) {
+			onMessage = hook
+		},
+        // widocznosc dla niezparowanych
         isVisible: function() {
-        	return this.bt_isvisible;
+            return discoverable
         },
-
-
-		/// void setVisible(bool)
-		///
-		/// Ustawia widocznosc urzadzenia dla niesparowanych urzadzen
-		///
-		/// PARAMS
-		///   visibility                  Widocznosc urzadzenie (true = widoczny, false = niewidoczny)
-        setVisible: function(visibility) {
-        	this.bt_isvisible = true;
-        	// TODO shd
+        setVisible: function(visible) {
+			if(visible){
+            	networking.bluetooth.requestDiscoverable()
+			}
         },
-
-
-		/// bool isSearching()
-		///
-		/// Sprawdza czy auto-wyszukiwanie nowych urzadzen jest wlaczone
-		/// 
-		/// RETURNS
-		///   true                        Wykonywany jest auto-update dostepnych urzadzen
-		///   false                       Dostepne urzadzenia nie sa automatycznie aktualizowane
-        isSearching: function () {
-        	return this.bt_issearching;
+        // szukanie niezparowanych
+        isSearching: function() {
+            return discovering
         },
-
-
-		/// void setSearching()
-		///
-		/// Ustawia auto-wyszukiwanie nowych urzadzen, z ktorymi mozna sie polaczyc
-		/// 
-		/// PARAMS
-		///   searching                    Ustawia auto-wyszykiwanie (true = wlaczone, false = wylaczone)
         setSearching: function(searching) {
-        	this.bt_issearching = true;
-			// TODO shd
-        }
+            if(searching) {
+				networking.bluetooth.startDiscovery()
+			} else {
+				networking.bluetooth.stopDiscovery()
+			}
+        },
+        getName: function() {
+            return name
+        },
+        setName: function(name) {
+            
+        },
 	};
 })
